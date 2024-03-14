@@ -55,3 +55,8 @@ with AEquivPath {n} (Γ : context n) : tm n -> tm n -> ty -> Prop :=
   Γ ⊢ TmK ↔ TmK ∈ TyK
 where "Γ ⊢ a ⇔ b ∈ A" := (AEquivTm Γ a b A)
 and  "Γ ⊢ a ↔ b ∈ A" := (AEquivPath Γ a b A).
+
+Scheme AEquivTm_ind' := Induction for AEquivTm Sort Prop
+    with AEquivPath_ind' := Induction for AEquivPath Sort Prop.
+
+Combined Scheme algo_mutual_ind from AEquivTm_ind', AEquivPath_ind'.
