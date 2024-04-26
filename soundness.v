@@ -67,4 +67,6 @@ Lemma soundness : forall n (Γ : context n),
 Proof.
   apply algo_mutual_ind.
   - move => n Γ s p t q hs ht hpq ihpq hs' ht'.
+    have : Γ ⊢ p ∈ TyK by eauto using subject_reduction_eval.
+    have : Γ ⊢ q ∈ TyK by eauto using subject_reduction_eval.
 Admitted.
