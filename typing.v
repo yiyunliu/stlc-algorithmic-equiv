@@ -169,6 +169,12 @@ Lemma ren_ok_id {n} (Γ : context n) :
   ren_ok id Γ Γ.
 Proof. sfirstorder. Qed.
 
+Lemma red_inj_equiv {n} (Γ : context n) a b A
+  (h : Γ ⊢ a ⤳ b ∈ A) : Γ ⊢ a ≡ b ∈ A.
+Proof.
+  elim : a b A / h; hauto lq:on ctrs:DEquiv.
+Qed.
+
 Lemma lr_back_clos_left : forall A n (Γ : context n) a0 b0 a1,
     Γ ⊢ a1 ⤳ a0 ∈ A ->
     LR Γ a0 b0 A ->
@@ -179,7 +185,7 @@ Proof.
     repeat split.
     + sfirstorder use:red_wt_l.
     + sfirstorder.
-    + admit.
+    + hauto lq:on use:red_inj_equiv ctrs:DEquiv.
     + move => m ξ Δ hξ c0 c1 hc.
       suff : Δ ⊢ App (ren_tm ξ a1) c0 ⤳ App (ren_tm ξ a0) c0 ∈ B by sfirstorder.
       apply R_App with (A := A); last by hauto lq:on use:escape.
@@ -193,16 +199,45 @@ Proof.
   elim : n Γ a A / h.
   - hauto l:on use:lr_left_right_refl unfold:SEquiv.
   - rewrite /SEquiv => n Γ A b B hb ihb m ρ δ Δ hδρ /=.
-    split.
-    + admit.
+    have h : LR (A .: Δ) (subst_tm (up_tm_tm ρ) b) (subst_tm (up_tm_tm δ) b) B.
+
+    apply ihb.
+    rewrite /subst_ok.
+    destruct i as [i|] => //=.
+    asimpl.
+    admit.
+    (* need to show that well-typed neutral terms inhabit the LR *)
+    admit.
+    repeat split.
+    + hauto lq:on use:escape ctrs:Wt.
+    + hauto lq:on use:escape ctrs:Wt.
+    + hauto lq:on use:escape ctrs:Wt, DEquiv.
     + move => p ξ Ψ hξ a0 a1 ha.
       asimpl.
-
+      apply : lr_back_clos_left.
+      apply R_AppAbs.
+      (* renaming *)
+      admit.
+      hauto lq:on use:escape.
+      (* The other direction *)
+      apply : lr_sym.
+      apply : lr_back_clos_left; last apply : lr_sym.
+      apply R_AppAbs.
+      (* renaming *)
+      admit.
+      hauto lq:on use:escape.
+      asimpl.
+      apply ihb.
+      rewrite /subst_ok.
+      destruct i as [i|]=>//=.
+      asimpl.
+      (* Need semantic weakening *)
+      admit.
   - move => n Γ A B b a hb ihb ha iha m ρ δ Δ hρδ //=.
     rewrite /SEquiv in ihb iha.
     move : ihb (hρδ) => /[apply].
     move : iha (hρδ) => /[apply] /=.
-    move => iha [ihb0 ihb1].
+    move => iha [? [? [ihb0 ihb1]]].
     move : ihb1 (ren_ok_id Δ)  => /[apply].
     asimpl.
     by apply.
