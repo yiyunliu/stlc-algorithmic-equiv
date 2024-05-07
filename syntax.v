@@ -5,13 +5,9 @@ Require Export fintype.
 Section ty.
 Inductive ty  : Type :=
   | Fun : ty   -> ty   -> ty 
-  | TyK : ty 
   | TyUnit : ty .
 
 Lemma congr_Fun  { s0 : ty   } { s1 : ty   } { t0 : ty   } { t1 : ty   } (H1 : s0 = t0) (H2 : s1 = t1) : Fun s0 s1 = Fun t0 t1 .
-Proof. congruence. Qed.
-
-Lemma congr_TyK  : TyK  = TyK  .
 Proof. congruence. Qed.
 
 Lemma congr_TyUnit  : TyUnit  = TyUnit  .
@@ -24,16 +20,12 @@ Inductive tm (ntm : nat) : Type :=
   | var_tm : (fin) (ntm) -> tm (ntm)
   | Lam : ty   -> tm  ((S) ntm) -> tm (ntm)
   | App : tm  (ntm) -> tm  (ntm) -> tm (ntm)
-  | TmK : tm (ntm)
   | TmUnit : tm (ntm).
 
 Lemma congr_Lam { mtm : nat } { s0 : ty   } { s1 : tm  ((S) mtm) } { t0 : ty   } { t1 : tm  ((S) mtm) } (H1 : s0 = t0) (H2 : s1 = t1) : Lam (mtm) s0 s1 = Lam (mtm) t0 t1 .
 Proof. congruence. Qed.
 
 Lemma congr_App { mtm : nat } { s0 : tm  (mtm) } { s1 : tm  (mtm) } { t0 : tm  (mtm) } { t1 : tm  (mtm) } (H1 : s0 = t0) (H2 : s1 = t1) : App (mtm) s0 s1 = App (mtm) t0 t1 .
-Proof. congruence. Qed.
-
-Lemma congr_TmK { mtm : nat } : TmK (mtm) = TmK (mtm) .
 Proof. congruence. Qed.
 
 Lemma congr_TmUnit { mtm : nat } : TmUnit (mtm) = TmUnit (mtm) .
@@ -47,7 +39,6 @@ Fixpoint ren_tm { mtm : nat } { ntm : nat } (xitm : (fin) (mtm) -> (fin) (ntm)) 
     | var_tm (_) s => (var_tm (ntm)) (xitm s)
     | Lam (_) s0 s1 => Lam (ntm) ((fun x => x) s0) ((ren_tm (upRen_tm_tm xitm)) s1)
     | App (_) s0 s1 => App (ntm) ((ren_tm xitm) s0) ((ren_tm xitm) s1)
-    | TmK (_)  => TmK (ntm)
     | TmUnit (_)  => TmUnit (ntm)
     end.
 
@@ -59,7 +50,6 @@ Fixpoint subst_tm { mtm : nat } { ntm : nat } (sigmatm : (fin) (mtm) -> tm (ntm)
     | var_tm (_) s => sigmatm s
     | Lam (_) s0 s1 => Lam (ntm) ((fun x => x) s0) ((subst_tm (up_tm_tm sigmatm)) s1)
     | App (_) s0 s1 => App (ntm) ((subst_tm sigmatm) s0) ((subst_tm sigmatm) s1)
-    | TmK (_)  => TmK (ntm)
     | TmUnit (_)  => TmUnit (ntm)
     end.
 
@@ -74,7 +64,6 @@ Fixpoint idSubst_tm { mtm : nat } (sigmatm : (fin) (mtm) -> tm (mtm)) (Eqtm : fo
     | var_tm (_) s => Eqtm s
     | Lam (_) s0 s1 => congr_Lam ((fun x => (eq_refl) x) s0) ((idSubst_tm (up_tm_tm sigmatm) (upId_tm_tm (_) Eqtm)) s1)
     | App (_) s0 s1 => congr_App ((idSubst_tm sigmatm Eqtm) s0) ((idSubst_tm sigmatm Eqtm) s1)
-    | TmK (_)  => congr_TmK 
     | TmUnit (_)  => congr_TmUnit 
     end.
 
@@ -89,7 +78,6 @@ Fixpoint extRen_tm { mtm : nat } { ntm : nat } (xitm : (fin) (mtm) -> (fin) (ntm
     | var_tm (_) s => (ap) (var_tm (ntm)) (Eqtm s)
     | Lam (_) s0 s1 => congr_Lam ((fun x => (eq_refl) x) s0) ((extRen_tm (upRen_tm_tm xitm) (upRen_tm_tm zetatm) (upExtRen_tm_tm (_) (_) Eqtm)) s1)
     | App (_) s0 s1 => congr_App ((extRen_tm xitm zetatm Eqtm) s0) ((extRen_tm xitm zetatm Eqtm) s1)
-    | TmK (_)  => congr_TmK 
     | TmUnit (_)  => congr_TmUnit 
     end.
 
@@ -104,7 +92,6 @@ Fixpoint ext_tm { mtm : nat } { ntm : nat } (sigmatm : (fin) (mtm) -> tm (ntm)) 
     | var_tm (_) s => Eqtm s
     | Lam (_) s0 s1 => congr_Lam ((fun x => (eq_refl) x) s0) ((ext_tm (up_tm_tm sigmatm) (up_tm_tm tautm) (upExt_tm_tm (_) (_) Eqtm)) s1)
     | App (_) s0 s1 => congr_App ((ext_tm sigmatm tautm Eqtm) s0) ((ext_tm sigmatm tautm Eqtm) s1)
-    | TmK (_)  => congr_TmK 
     | TmUnit (_)  => congr_TmUnit 
     end.
 
@@ -116,7 +103,6 @@ Fixpoint compRenRen_tm { ktm : nat } { ltm : nat } { mtm : nat } (xitm : (fin) (
     | var_tm (_) s => (ap) (var_tm (ltm)) (Eqtm s)
     | Lam (_) s0 s1 => congr_Lam ((fun x => (eq_refl) x) s0) ((compRenRen_tm (upRen_tm_tm xitm) (upRen_tm_tm zetatm) (upRen_tm_tm rhotm) (up_ren_ren (_) (_) (_) Eqtm)) s1)
     | App (_) s0 s1 => congr_App ((compRenRen_tm xitm zetatm rhotm Eqtm) s0) ((compRenRen_tm xitm zetatm rhotm Eqtm) s1)
-    | TmK (_)  => congr_TmK 
     | TmUnit (_)  => congr_TmUnit 
     end.
 
@@ -131,7 +117,6 @@ Fixpoint compRenSubst_tm { ktm : nat } { ltm : nat } { mtm : nat } (xitm : (fin)
     | var_tm (_) s => Eqtm s
     | Lam (_) s0 s1 => congr_Lam ((fun x => (eq_refl) x) s0) ((compRenSubst_tm (upRen_tm_tm xitm) (up_tm_tm tautm) (up_tm_tm thetatm) (up_ren_subst_tm_tm (_) (_) (_) Eqtm)) s1)
     | App (_) s0 s1 => congr_App ((compRenSubst_tm xitm tautm thetatm Eqtm) s0) ((compRenSubst_tm xitm tautm thetatm Eqtm) s1)
-    | TmK (_)  => congr_TmK 
     | TmUnit (_)  => congr_TmUnit 
     end.
 
@@ -146,7 +131,6 @@ Fixpoint compSubstRen_tm { ktm : nat } { ltm : nat } { mtm : nat } (sigmatm : (f
     | var_tm (_) s => Eqtm s
     | Lam (_) s0 s1 => congr_Lam ((fun x => (eq_refl) x) s0) ((compSubstRen_tm (up_tm_tm sigmatm) (upRen_tm_tm zetatm) (up_tm_tm thetatm) (up_subst_ren_tm_tm (_) (_) (_) Eqtm)) s1)
     | App (_) s0 s1 => congr_App ((compSubstRen_tm sigmatm zetatm thetatm Eqtm) s0) ((compSubstRen_tm sigmatm zetatm thetatm Eqtm) s1)
-    | TmK (_)  => congr_TmK 
     | TmUnit (_)  => congr_TmUnit 
     end.
 
@@ -161,7 +145,6 @@ Fixpoint compSubstSubst_tm { ktm : nat } { ltm : nat } { mtm : nat } (sigmatm : 
     | var_tm (_) s => Eqtm s
     | Lam (_) s0 s1 => congr_Lam ((fun x => (eq_refl) x) s0) ((compSubstSubst_tm (up_tm_tm sigmatm) (up_tm_tm tautm) (up_tm_tm thetatm) (up_subst_subst_tm_tm (_) (_) (_) Eqtm)) s1)
     | App (_) s0 s1 => congr_App ((compSubstSubst_tm sigmatm tautm thetatm Eqtm) s0) ((compSubstSubst_tm sigmatm tautm thetatm Eqtm) s1)
-    | TmK (_)  => congr_TmK 
     | TmUnit (_)  => congr_TmUnit 
     end.
 
@@ -176,7 +159,6 @@ Fixpoint rinst_inst_tm { mtm : nat } { ntm : nat } (xitm : (fin) (mtm) -> (fin) 
     | var_tm (_) s => Eqtm s
     | Lam (_) s0 s1 => congr_Lam ((fun x => (eq_refl) x) s0) ((rinst_inst_tm (upRen_tm_tm xitm) (up_tm_tm sigmatm) (rinstInst_up_tm_tm (_) (_) Eqtm)) s1)
     | App (_) s0 s1 => congr_App ((rinst_inst_tm xitm sigmatm Eqtm) s0) ((rinst_inst_tm xitm sigmatm Eqtm) s1)
-    | TmK (_)  => congr_TmK 
     | TmUnit (_)  => congr_TmUnit 
     end.
 
@@ -226,8 +208,6 @@ Arguments var_tm {ntm}.
 Arguments Lam {ntm}.
 
 Arguments App {ntm}.
-
-Arguments TmK {ntm}.
 
 Arguments TmUnit {ntm}.
 

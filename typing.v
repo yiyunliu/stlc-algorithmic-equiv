@@ -60,6 +60,7 @@ Inductive DEquiv {n} (Γ : context n) : tm n -> tm n -> ty -> Prop :=
   (* --------------- *)
   Γ ⊢ a ≡ b ∈ TyUnit
 where "Γ ⊢ a ≡ b ∈ A" := (DEquiv Γ a b A).
+#[export]Hint Constructors DEquiv : srule.
 
 Definition whnf {n} (a : tm n) :=
   match a with
@@ -83,6 +84,8 @@ Inductive Red {n} (Γ : context n) : tm n -> tm n -> ty -> Prop :=
   Γ ⊢ App (Lam A b) a ⤳ subst_tm (a..) b ∈ B
 where "Γ ⊢ a ⤳ b ∈ A" := (Red Γ a b A).
 
+#[export]Hint Constructors Red : srule.
+
 Reserved Notation "Γ ⊢ a ⤳* b ∈ A" (at level 70, no associativity).
 Inductive Reds {n} (Γ : context n) (a : tm n) : tm n -> ty -> Prop :=
 | Rs_Refl A :
@@ -100,7 +103,6 @@ Fixpoint ne {n} (a : tm n) :=
   | App a b => ne a
   | Lam _ _ => false
   | TmUnit => false
-  | TmK => false
   end.
 
 Definition ren_ok {n m} ξ (Γ : context n) (Δ : context m) :=
@@ -113,7 +115,6 @@ Fixpoint LR {n} (Γ : context n) (b0 b1 : tm n) (A : ty) : Prop :=
   | Fun A B => Γ ⊢ b0 ∈ Fun A B /\ Γ ⊢ b1 ∈ Fun A B /\ Γ ⊢ b0 ≡ b1 ∈ Fun A B /\
                 forall m ξ (Δ : context m), ren_ok ξ Γ Δ ->
                          forall a0 a1, LR Δ a0 a1 A -> LR Δ (App (ren_tm ξ b0) a0) (App (ren_tm ξ b1) a1) B
-  | _ => False
   end.
 
 Lemma red_wt_l n (Γ : context n) (a b : tm n) (A : ty)
@@ -175,6 +176,88 @@ Proof.
   elim : a b A / h; hauto lq:on ctrs:DEquiv.
 Qed.
 
+Lemma wt_renaming n Γ a A (h : Γ ⊢ a ∈ A) : forall m (ξ : fin n -> fin m) Δ,
+    ren_ok ξ Γ Δ ->
+    Δ ⊢ ren_tm ξ a ∈ A.
+Proof.
+  elim : n Γ a A / h; hauto q:on ctrs:Wt inv:option unfold:ren_ok.
+Qed.
+
+Lemma R_AppAbs' n (Γ : context n) b a A B b0 :
+  b0 = subst_tm (a..) b ->
+  A.:Γ ⊢ b ∈ B ->
+  Γ ⊢ a ∈ A ->
+  (* ---------------- *)
+  Γ ⊢ App (Lam A b) a ⤳ b0 ∈ B.
+Proof. move => ->. apply R_AppAbs. Qed.
+
+Lemma red_renaming n (Γ : context n) (a b : tm n) A (h : Γ ⊢ a ⤳ b ∈ A) :
+  forall m Δ (ξ : fin n -> fin m), ren_ok ξ Γ Δ -> Δ ⊢ ren_tm ξ a ⤳ ren_tm ξ b ∈ A.
+Proof.
+  elim : a b A / h => //=; eauto using wt_renaming with srule.
+  move => b a A B hb ha m Δ ξ hξ //=.
+  asimpl.
+  apply R_AppAbs'. by asimpl.
+  apply wt_renaming with (Γ := A .: Γ)=>//.
+  rewrite /ren_ok.
+  destruct i as [i|] => //=.
+  eauto using wt_renaming.
+Qed.
+
+Lemma DE_AppAbs' n (Γ : context n) b0 b1 a0 a1 A B b :
+  b = subst_tm (a1..) b1 ->
+  A.:Γ ⊢ b0 ≡ b1 ∈ B ->
+  Γ ⊢ a0 ≡ a1 ∈ A ->
+  (* ---------------- *)
+  Γ ⊢ App (Lam A b0) a0 ≡ b ∈ B.
+Proof. move => -> ; apply DE_AppAbs. Qed.
+
+Lemma eq_renaming n (Γ : context n) (a b : tm n) A (h : Γ ⊢ a ≡ b ∈ A) :
+  forall m Δ (ξ : fin n -> fin m), ren_ok ξ Γ Δ -> Δ ⊢ ren_tm ξ a ≡ ren_tm ξ b ∈ A.
+Proof.
+  elim : n Γ a b A / h => //=; eauto with srule.
+  - hauto lq:on use:wt_renaming ctrs:DEquiv.
+  - hauto lq:on inv:option ctrs:DEquiv unfold:ren_ok.
+  - move => *.
+    apply : DE_AppAbs'; eauto; cycle 1.
+    hauto lq:on inv:option unfold:ren_ok.
+    by asimpl.
+  - hauto lq:on use:wt_renaming ctrs:DEquiv.
+Qed.
+
+Lemma ne_nf_renaming n m (a : tm n) :
+  forall (ξ : fin n -> fin m),
+    (ne a <-> ne (ren_tm ξ a)).
+Proof.
+  elim : a; solve [auto; hauto b:on].
+Qed.
+
+Lemma ne_reducible n (Γ : context n) (a b : tm n) A :
+  Γ ⊢ a ≡ b ∈ A ->
+  Γ ⊢ a ∈ A ->
+  Γ ⊢ b ∈ A ->
+  ne a -> ne b -> LR Γ a b A.
+Proof.
+  elim : A n Γ a b.
+  - move => A ihA B ihB n Γ b0 b1 heq hb00 hb10 hb01 hb11 /=.
+    repeat split => //.
+    move => m ξ Δ h a0 a1 ha.
+    apply ihB => //.
+    apply DE_App with (A := A) => //.
+    (* renaming for eq *)
+    sfirstorder use:eq_renaming.
+    hauto lq:on use:escape.
+    apply T_App with (A := A) => //.
+    sfirstorder use:wt_renaming.
+    hauto lq:on use:escape.
+    apply T_App with (A := A) => //.
+    sfirstorder use:wt_renaming.
+    hauto lq:on use:escape.
+    hauto lq:on use:ne_nf_renaming.
+    hauto lq:on use:ne_nf_renaming.
+  - hauto l:on.
+Qed.
+
 Lemma lr_back_clos_left : forall A n (Γ : context n) a0 b0 a1,
     Γ ⊢ a1 ⤳ a0 ∈ A ->
     LR Γ a0 b0 A ->
@@ -189,9 +272,9 @@ Proof.
     + move => m ξ Δ hξ c0 c1 hc.
       suff : Δ ⊢ App (ren_tm ξ a1) c0 ⤳ App (ren_tm ξ a0) c0 ∈ B by sfirstorder.
       apply R_App with (A := A); last by hauto lq:on use:escape.
-      admit.
+      eauto using red_renaming.
   - hauto lq:on ctrs:Reds.
-Admitted.
+Qed.
 
 Lemma soundness {n} (Γ : context n) a A : Γ ⊢ a ∈ A -> Γ ⊨ a ≡ a ∈ A.
 Proof.
@@ -207,31 +290,37 @@ Proof.
     asimpl.
     admit.
     (* need to show that well-typed neutral terms inhabit the LR *)
-    admit.
+    apply ne_reducible; eauto with srule.
+    apply DE_Refl. apply T_Var. apply T_Var. apply T_Var.
     repeat split.
     + hauto lq:on use:escape ctrs:Wt.
     + hauto lq:on use:escape ctrs:Wt.
     + hauto lq:on use:escape ctrs:Wt, DEquiv.
     + move => p ξ Ψ hξ a0 a1 ha.
-      asimpl.
       apply : lr_back_clos_left.
       apply R_AppAbs.
       (* renaming *)
-      admit.
+      have : A .: Δ ⊢ subst_tm (up_tm_tm ρ) b ∈ B by hauto l:on use:escape.
+      move /wt_renaming => //.
+      apply => //.
+      rewrite /ren_ok. destruct i as [i|] => //=.
       hauto lq:on use:escape.
       (* The other direction *)
       apply : lr_sym.
       apply : lr_back_clos_left; last apply : lr_sym.
       apply R_AppAbs.
       (* renaming *)
-      admit.
+      have : A .: Δ ⊢ subst_tm (up_tm_tm δ) b ∈ B by hauto l:on use:escape.
+      move /wt_renaming => //.
+      apply => //.
+      rewrite /ren_ok. destruct i as [i|] => //=.
       hauto lq:on use:escape.
       asimpl.
       apply ihb.
       rewrite /subst_ok.
       destruct i as [i|]=>//=.
       asimpl.
-      (* Need semantic weakening *)
+      renamify.
       admit.
   - move => n Γ A B b a hb ihb ha iha m ρ δ Δ hρδ //=.
     rewrite /SEquiv in ihb iha.
