@@ -225,11 +225,43 @@ Proof.
   - hauto lq:on use:wt_renaming ctrs:DEquiv.
 Qed.
 
+Lemma reds_renaming n (Γ : context n) (a b : tm n) A (h : Γ ⊢ a ⤳* b ∈ A) :
+  forall m Δ (ξ : fin n -> fin m), ren_ok ξ Γ Δ -> Δ ⊢ ren_tm ξ a ⤳* ren_tm ξ b ∈ A.
+Proof.
+  elim : a b A  / h; hauto lq:on use:red_renaming, wt_renaming ctrs:Reds.
+Qed.
+
 Lemma ne_nf_renaming n m (a : tm n) :
   forall (ξ : fin n -> fin m),
     (ne a <-> ne (ren_tm ξ a)).
 Proof.
   elim : a; solve [auto; hauto b:on].
+Qed.
+
+Lemma ren_ok_compose n m p (ξ : fin n -> fin m) (ξ0 : fin m -> fin p) Γ Δ Ψ :
+  ren_ok ξ Γ Δ ->
+  ren_ok ξ0 Δ Ψ ->
+  ren_ok (ξ >> ξ0) Γ Ψ.
+Proof.
+  rewrite /ren_ok => h0 h1.
+  move => i.
+  rewrite h0 h1. by asimpl.
+Qed.
+
+Lemma lr_renaming n (Γ : context n) (a b : tm n) A (h : LR Γ a b A) :
+  forall m Δ (ξ : fin n -> fin m), ren_ok ξ Γ Δ -> LR Δ (ren_tm ξ a) (ren_tm ξ b) A.
+Proof.
+  elim : A n Γ a b h => //=.
+  - move => A ihA B ihB n Γ a b [h0 [h1 [h2 h3]]] m Δ ξ hξ.
+    repeat split; eauto using wt_renaming, eq_renaming.
+    move => p ξ0 Ψ hξ0 a0 a1 ha.
+    asimpl.
+    apply : h3 => //.
+    apply : ren_ok_compose hξ hξ0.
+  - move => n Γ a b [a0 [a1 h]].
+    move => m Δ ξ hξ.
+    exists (ren_tm ξ a0), (ren_tm ξ a1).
+    hauto l:on use:ne_nf_renaming, reds_renaming.
 Qed.
 
 Lemma ne_reducible n (Γ : context n) (a b : tm n) A :
@@ -288,7 +320,8 @@ Proof.
     rewrite /subst_ok.
     destruct i as [i|] => //=.
     asimpl.
-    admit.
+    apply : lr_renaming; eauto.
+    sfirstorder inv:option.
     (* need to show that well-typed neutral terms inhabit the LR *)
     apply ne_reducible; eauto with srule.
     apply DE_Refl. apply T_Var. apply T_Var. apply T_Var.
@@ -321,7 +354,7 @@ Proof.
       destruct i as [i|]=>//=.
       asimpl.
       renamify.
-      admit.
+      apply : lr_renaming; eauto.
   - move => n Γ A B b a hb ihb ha iha m ρ δ Δ hρδ //=.
     rewrite /SEquiv in ihb iha.
     move : ihb (hρδ) => /[apply].
@@ -331,4 +364,4 @@ Proof.
     asimpl.
     by apply.
   - hauto l:on.
-Admitted.
+Qed.
